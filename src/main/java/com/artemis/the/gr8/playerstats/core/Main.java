@@ -15,6 +15,7 @@ import com.artemis.the.gr8.playerstats.core.msg.msgutils.LanguageKeyHandler;
 import com.artemis.the.gr8.playerstats.core.sharing.ShareManager;
 import com.artemis.the.gr8.playerstats.core.utils.MyLogger;
 import com.artemis.the.gr8.playerstats.core.utils.OfflinePlayerHandler;
+import io.papermc.paper.threadedregions.scheduler.AsyncScheduler;
 import me.clip.placeholderapi.PlaceholderAPIPlugin;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
@@ -26,6 +27,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * PlayerStats' Main class
@@ -147,23 +150,26 @@ public final class Main extends JavaPlugin implements PlayerStats {
      * Setup bstats
      */
     private void setupMetrics() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                final Metrics metrics = new Metrics(pluginInstance, 15923);
-                final boolean placeholderExpansionActive;
-                if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-                    PlaceholderExpansion expansion = PlaceholderAPIPlugin
-                            .getInstance()
-                            .getLocalExpansionManager()
-                            .getExpansion("playerstats");
-                    placeholderExpansionActive = expansion != null;
-                } else {
-                    placeholderExpansionActive = false;
-                }
-                metrics.addCustomChart(new SimplePie("using_placeholder_expansion", () -> placeholderExpansionActive ? "yes" : "no"));
+        // Using Folia AsyncScheduler
+        AsyncScheduler asyncScheduler = Bukkit.getAsyncScheduler();
+
+        asyncScheduler.runDelayed(this, delay -> {
+            final Metrics metrics = new Metrics(pluginInstance, 15923);
+
+            final boolean placeholderExpansionActive;
+            if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+                PlaceholderExpansion expansion = PlaceholderAPIPlugin
+                        .getInstance()
+                        .getLocalExpansionManager()
+                        .getExpansion("playerstats");
+                placeholderExpansionActive = expansion != null;
+            } else {
+                placeholderExpansionActive = false;
             }
-        }.runTaskLaterAsynchronously(this, 200);
+
+            metrics.addCustomChart(new SimplePie("using_placeholder_expansion", () -> placeholderExpansionActive ? "yes" : "no"));
+        }, 200L, TimeUnit.MILLISECONDS);
+
     }
 
     @Override
